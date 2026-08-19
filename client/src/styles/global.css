@@ -1,0 +1,129 @@
+:root {
+  --primary: #1769AA;
+  --primary-dark: #0D47A1;
+  --bg: #F5F7FA;
+  --card: #FFFFFF;
+  --text: #1F2937;
+  --muted: #6B7280;
+  --success: #22A447;
+  --warning: #F59E0B;
+  --danger: #DC2626;
+  --border: rgba(17, 24, 39, 0.08);
+  --shadow: 0 12px 30px rgba(17, 24, 39, 0.08);
+  --radius: 18px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  margin: 0;
+  min-height: 100%;
+  font-family: 'Inter', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+}
+
+body {
+  min-height: 100vh;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button, input {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+img {
+  max-width: 100%;
+  display: block;
+}
+
+h1, h2, h3, h4, p {
+  margin: 0;
+}
+
+input {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 0.9rem 1rem;
+  background: #fff;
+  color: var(--text);
+}
+
+input:focus {
+  outline: 2px solid rgba(23, 105, 170, 0.15);
+  border-color: rgba(23, 105, 170, 0.5);
+}
+
+.primary-btn,
+.secondary-btn,
+.text-btn {
+  border: none;
+  border-radius: 12px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.primary-btn {
+  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+  color: white;
+  padding: 0.95rem 1.25rem;
+  font-weight: 700;
+  box-shadow: 0 12px 24px rgba(23, 105, 170, 0.2);
+}
+
+.primary-btn:hover,
+.secondary-btn:hover,
+.text-btn:hover {
+  transform: translateY(-1px);
+}
+
+.primary-btn.small,
+.secondary-btn.small {
+  padding: 0.7rem 1rem;
+  font-size: 0.9rem;
+}
+
+.secondary-btn {
+  background: #eef3f9;
+  color: var(--text);
+  padding: 0.9rem 1.2rem;
+}
+
+.text-btn {
+  background: transparent;
+  color: var(--primary);
+  padding: 0;
+  font-weight: 700;
+}
+
+.page-loader,
+.loading-state {
+  min-height: 50vh;
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.form-alert {
+  border-radius: 12px;
+  padding: 0.8rem 1rem;
+  margin-bottom: 1rem;
+  font-size: 0.92rem;
+}
+
+.form-alert.error {
+  background: rgba(220, 38, 38, 0.08);
+  color: var(--danger);
+  border: 1px solid rgba(220, 38, 38, 0.12);
+}
