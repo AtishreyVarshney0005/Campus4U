@@ -65,6 +65,7 @@ const Dashboard = () => {
             <div>
               <p className="eyebrow">Overview</p>
               <h2>Welcome back, {student?.fullName?.split(' ')[0] || 'Student'}!</h2>
+              <p className="page-subtitle">{student?.email}</p>
             </div>
             <button className="primary-btn small">View report</button>
           </div>

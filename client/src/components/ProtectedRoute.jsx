@@ -1,8 +1,8 @@
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
-const ProtectedRoute = ({ children }) => {
-  const { token, loading } = useAuth();
+const ProtectedRoute = ({ children, role }) => {
+  const { token, student, loading } = useAuth();
   const location = useLocation();
 
   if (loading) {
@@ -11,6 +11,10 @@ const ProtectedRoute = ({ children }) => {
 
   if (!token) {
     return <Navigate to="/login" replace state={{ from: location }} />;
+  }
+
+  if (role && student?.role !== role) {
+    return <Navigate to={student?.role === 'teacher' ? '/teacher-dashboard' : '/dashboard'} replace />;
   }
 
   return children;

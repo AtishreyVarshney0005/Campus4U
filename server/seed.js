@@ -1,90 +1,112 @@
-import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
-import dotenv from 'dotenv';
-import Student from './models/Student.js';
-import Attendance from './models/Attendance.js';
-import Marks from './models/Marks.js';
-import Library from './models/Library.js';
-import Placement from './models/Placement.js';
-import News from './models/News.js';
-import Event from './models/Event.js';
+import crypto from 'crypto';
+import connectDB, { db } from './config/db.js';
 
-dotenv.config();
+const now = new Date().toISOString();
+const id = () => crypto.randomUUID();
 
 const seedData = async () => {
-  try {
-    await mongoose.connect(process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/college_portal');
+  connectDB();
 
-    await Student.deleteMany({});
-    await Attendance.deleteMany({});
-    await Marks.deleteMany({});
-    await Library.deleteMany({});
-    await Placement.deleteMany({});
-    await News.deleteMany({});
-    await Event.deleteMany({});
+  const studentPassword = await bcrypt.hash('Student@123', 10);
+  const teacherPassword = await bcrypt.hash('Teacher@123', 10);
 
-    const password = await bcrypt.hash('Student@123', 10);
+  const seed = db.transaction(() => {
+    db.exec(`
+      DELETE FROM placement_applications;
+      DELETE FROM attendance;
+      DELETE FROM marks;
+      DELETE FROM library;
+      DELETE FROM placements;
+      DELETE FROM news;
+      DELETE FROM events;
+      DELETE FROM students;
+    `);
 
-    const student = await Student.create({
-      fullName: 'Aisha Verma',
-      email: 'student@abccollege.com',
-      studentId: 'ABC2026001',
-      password,
-      phone: '+91 98765 43210',
-      course: 'B.Tech',
-      branch: 'Computer Science',
-      semester: 6,
-      year: 2026,
-      profileImage: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=400&q=80',
-      address: '42 Lakeview Avenue, Bengaluru',
-      dateOfBirth: '2004-08-14',
-    });
+    const studentId = id();
+    const teacherId = id();
+    db.prepare(`INSERT INTO students
+      (id, full_name, email, student_id, role, password, phone, course, branch, semester, year,
+       profile_image, address, date_of_birth, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+      .run(studentId, 'Aisha Verma', 'student@abccollege.com', 'ABC2026001', 'student', studentPassword,
+        '+91 98765 43210', 'B.Tech', 'Computer Science', 6, 2026,
+        'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=400&q=80',
+        '42 Lakeview Avenue, Bengaluru', '2004-08-14', now, now);
 
-    await Attendance.insertMany([
-      { studentId: student._id, subject: 'Computer Science', totalClasses: 25, present: 23, absent: 1, leave: 1, percentage: 92 },
-      { studentId: student._id, subject: 'Mathematics', totalClasses: 20, present: 17, absent: 2, leave: 1, percentage: 85 },
-      { studentId: student._id, subject: 'Physics', totalClasses: 22, present: 17, absent: 3, leave: 2, percentage: 77 },
-      { studentId: student._id, subject: 'English', totalClasses: 18, present: 16, absent: 1, leave: 1, percentage: 89 },
-    ]);
+    db.prepare(`INSERT INTO students
+      (id, full_name, email, student_id, role, password, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`)
+      .run(teacherId, 'Rahul Mehta', 'teacher@abccollege.com', 'TCH2026001', 'teacher', teacherPassword, now, now);
 
-    await Marks.insertMany([
-      { studentId: student._id, subject: 'Mathematics', internalMarks: 18, assignmentMarks: 9, practicalMarks: 0, theoryMarks: 58, totalMarks: 85, grade: 'A', semester: 6 },
-      { studentId: student._id, subject: 'Physics', internalMarks: 17, assignmentMarks: 8, practicalMarks: 18, theoryMarks: 35, totalMarks: 78, grade: 'A', semester: 6 },
-      { studentId: student._id, subject: 'English', internalMarks: 19, assignmentMarks: 10, practicalMarks: 0, theoryMarks: 59, totalMarks: 88, grade: 'A+', semester: 6 },
-      { studentId: student._id, subject: 'Computer Science', internalMarks: 20, assignmentMarks: 10, practicalMarks: 20, theoryMarks: 42, totalMarks: 92, grade: 'A+', semester: 6 },
-    ]);
+    const attendance = [
+      ['Computer Science', 25, 23, 1, 1, 92],
+      ['Mathematics', 20, 17, 2, 1, 85],
+      ['Physics', 22, 17, 3, 2, 77],
+      ['English', 18, 16, 1, 1, 89],
+    ];
+    const insertAttendance = db.prepare(`INSERT INTO attendance
+      (id, student_id, subject, total_classes, present, absent, leave_count, percentage, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
+    attendance.forEach((record) => insertAttendance.run(id(), studentId, ...record, now, now));
 
-    await Library.insertMany([
-      { studentId: student._id, bookName: 'Data Structures and Algorithms', author: 'Robert Lafore', issueDate: new Date('2026-08-01'), dueDate: new Date('2026-08-21'), returnDate: null, status: 'Issued' },
-      { studentId: student._id, bookName: 'Operating Systems', author: 'Abraham Silberschatz', issueDate: new Date('2026-07-15'), dueDate: new Date('2026-08-15'), returnDate: new Date('2026-08-14'), status: 'Returned' },
-      { studentId: student._id, bookName: 'Machine Learning Essentials', author: 'Ethem Alpaydin', issueDate: new Date('2026-06-28'), dueDate: new Date('2026-08-10'), returnDate: null, status: 'Overdue' },
-    ]);
+    const marks = [
+      ['Mathematics', 18, 9, 0, 58, 85, 'A'],
+      ['Physics', 17, 8, 18, 35, 78, 'A'],
+      ['English', 19, 10, 0, 59, 88, 'A+'],
+      ['Computer Science', 20, 10, 20, 42, 92, 'A+'],
+    ];
+    const insertMarks = db.prepare(`INSERT INTO marks
+      (id, student_id, subject, internal_marks, assignment_marks, practical_marks, theory_marks,
+       total_marks, grade, semester, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 6, ?, ?)`);
+    marks.forEach((record) => insertMarks.run(id(), studentId, ...record, now, now));
 
-    await Placement.insertMany([
-      { companyName: 'TCS', role: 'Software Engineer', package: '₹8.5 LPA', location: 'Bengaluru', eligibility: 'CGPA >= 7.5', driveDate: new Date('2026-09-14'), studentsApplied: [student._id], description: 'Campus placement drive for software engineering roles.' },
-      { companyName: 'Infosys', role: 'System Engineer', package: '₹7.2 LPA', location: 'Hyderabad', eligibility: 'CGPA >= 7.0', driveDate: new Date('2026-09-20'), studentsApplied: [student._id], description: 'System engineer role for emerging technologies.' },
-      { companyName: 'Accenture', role: 'Associate Software Engineer', package: '₹9.0 LPA', location: 'Pune', eligibility: 'CGPA >= 7.8', driveDate: new Date('2026-10-05'), studentsApplied: [], description: 'Technology consulting focused software roles.' },
-    ]);
+    const books = [
+      ['Data Structures and Algorithms', 'Robert Lafore', '2026-08-01', '2026-08-21', null, 'Issued'],
+      ['Operating Systems', 'Abraham Silberschatz', '2026-07-15', '2026-08-15', '2026-08-14', 'Returned'],
+      ['Machine Learning Essentials', 'Ethem Alpaydin', '2026-06-28', '2026-08-10', null, 'Overdue'],
+    ];
+    const insertBook = db.prepare(`INSERT INTO library
+      (id, student_id, book_name, author, issue_date, due_date, return_date, status, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
+    books.forEach((record) => insertBook.run(id(), studentId, ...record, now, now));
 
-    await News.insertMany([
-      { title: 'Seminar on Artificial Intelligence', description: 'A guest lecture by industry experts on AI and ML trends in modern engineering.', category: 'Academic', date: new Date('2026-08-25') },
-      { title: 'Inter-College Sports Meet', description: 'Register teams for athletics, cricket, and volleyball events for the annual sports week.', category: 'Sports', date: new Date('2026-08-28') },
-      { title: 'Hackathon Registration Open', description: 'Students can register for the flagship annual hackathon with mentorship support.', category: 'Events', date: new Date('2026-09-02') },
-      { title: 'Placement Workshops', description: 'Resume and aptitude workshops are scheduled for final-year students beginning next week.', category: 'Placement', date: new Date('2026-09-05') },
-    ]);
+    const placements = [
+      ['TCS', 'Software Engineer', '₹8.5 LPA', 'Bengaluru', 'CGPA >= 7.5', '2026-09-14', 'Campus placement drive for software engineering roles.'],
+      ['Infosys', 'System Engineer', '₹7.2 LPA', 'Hyderabad', 'CGPA >= 7.0', '2026-09-20', 'System engineer role for emerging technologies.'],
+      ['Accenture', 'Associate Software Engineer', '₹9.0 LPA', 'Pune', 'CGPA >= 7.8', '2026-10-05', 'Technology consulting focused software roles.'],
+    ];
+    const insertPlacement = db.prepare(`INSERT INTO placements
+      (id, company_name, role, package, location, eligibility, drive_date, description, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
+    placements.forEach((record) => insertPlacement.run(id(), ...record, now, now));
 
-    await Event.insertMany([
-      { title: 'Career Fair', description: 'Meet top recruiters, explore internships, and network with industry leaders.', date: new Date('2026-09-12'), time: '10:00 AM', location: 'Main Auditorium' },
-      { title: 'Technical Fest', description: 'Coding contests, robotics demos, and innovation showcases open to all students.', date: new Date('2026-09-25'), time: '9:30 AM', location: 'Innovation Hall' },
-      { title: 'Cultural Fest', description: 'A vibrant celebration of music, dance, and student performances.', date: new Date('2026-10-04'), time: '11:00 AM', location: 'Open Air Theater' },
-    ]);
+    const news = [
+      ['Seminar on Artificial Intelligence', 'A guest lecture by industry experts on AI and ML trends in modern engineering.', 'Academic', '2026-08-25'],
+      ['Inter-College Sports Meet', 'Register teams for athletics, cricket, and volleyball events for the annual sports week.', 'Sports', '2026-08-28'],
+      ['Hackathon Registration Open', 'Students can register for the flagship annual hackathon with mentorship support.', 'Events', '2026-09-02'],
+      ['Placement Workshops', 'Resume and aptitude workshops are scheduled for final-year students beginning next week.', 'Placement', '2026-09-05'],
+    ];
+    const insertNews = db.prepare(`INSERT INTO news
+      (id, title, description, category, date, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)`);
+    news.forEach((record) => insertNews.run(id(), ...record, now, now));
 
-    console.log('Demo data seeded successfully.');
-    process.exit(0);
-  } catch (error) {
-    console.error('Seeding failed:', error.message);
-    process.exit(1);
-  }
+    const events = [
+      ['Career Fair', 'Meet top recruiters, explore internships, and network with industry leaders.', '2026-09-12', '10:00 AM', 'Main Auditorium'],
+      ['Technical Fest', 'Coding contests, robotics demos, and innovation showcases open to all students.', '2026-09-25', '9:30 AM', 'Innovation Hall'],
+      ['Cultural Fest', 'A vibrant celebration of music, dance, and student performances.', '2026-10-04', '11:00 AM', 'Open Air Theater'],
+    ];
+    const insertEvent = db.prepare(`INSERT INTO events
+      (id, title, description, date, time, location, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`);
+    events.forEach((record) => insertEvent.run(id(), ...record, now, now));
+  });
+
+  await seed();
+  console.log('SQLite demo data seeded successfully.');
 };
 
-seedData();
+seedData().catch((error) => {
+  console.error('Seeding failed:', error.message);
+  process.exit(1);
+});

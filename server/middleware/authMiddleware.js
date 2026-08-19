@@ -1,5 +1,5 @@
 import jwt from 'jsonwebtoken';
-import Student from '../models/Student.js';
+import { db } from '../config/db.js';
 
 const protect = async (req, res, next) => {
   let token;
@@ -8,9 +8,17 @@ const protect = async (req, res, next) => {
     try {
       token = req.headers.authorization.split(' ')[1];
       const decoded = jwt.verify(token, process.env.JWT_SECRET || 'college-secret-key');
-      req.student = await Student.findById(decoded.id).select('-password');
+      const student = decoded.id ? db.prepare('SELECT * FROM students WHERE id = ?').get(decoded.id) : null;
+      req.student = student
+        ? { _id: student.id, ...student }
+        : {
+          _id: null,
+          email: decoded.email,
+          role: decoded.role,
+          fullName: decoded.email?.split('@')[0] || decoded.role,
+        };
 
-      if (!req.student) {
+      if (!req.student.email || !req.student.role) {
         return res.status(401).json({ message: 'Student not found' });
       }
 

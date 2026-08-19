@@ -1,11 +1,37 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import Student from '../models/Student.js';
+import crypto from 'crypto';
+import { db } from '../config/db.js';
+import { getDisplayName, isValidEmail, ROLE_PASSWORDS } from '../config/authConfig.js';
 
-const generateToken = (id) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET || 'college-secret-key', {
+const generateToken = (email, role) => {
+  return jwt.sign({ email, role }, process.env.JWT_SECRET || 'college-secret-key', {
     expiresIn: '7d',
   });
+};
+
+const toStudent = (row, includePassword = false) => {
+  if (!row) return null;
+  const student = {
+    _id: row.id,
+    id: row.id,
+    fullName: row.full_name,
+    email: row.email,
+    studentId: row.student_id,
+    role: row.role,
+    phone: row.phone,
+    course: row.course,
+    branch: row.branch,
+    semester: row.semester,
+    year: row.year,
+    profileImage: row.profile_image,
+    address: row.address,
+    dateOfBirth: row.date_of_birth,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+  if (includePassword) student.password = row.password;
+  return student;
 };
 
 export const registerStudent = async (req, res) => {
@@ -28,31 +54,35 @@ export const registerStudent = async (req, res) => {
       return res.status(400).json({ message: 'Passwords do not match.' });
     }
 
-    const existingEmail = await Student.findOne({ email: email.toLowerCase() });
+    const normalizedEmail = email.trim().toLowerCase();
+    const normalizedStudentId = studentId.trim().toUpperCase();
+    const existingEmail = db.prepare('SELECT id FROM students WHERE email = ?').get(normalizedEmail);
     if (existingEmail) {
       return res.status(400).json({ message: 'Email already exists.' });
     }
 
-    const existingStudentId = await Student.findOne({ studentId: studentId.toUpperCase() });
+    const existingStudentId = db.prepare('SELECT id FROM students WHERE student_id = ?').get(normalizedStudentId);
     if (existingStudentId) {
       return res.status(400).json({ message: 'Student ID already exists.' });
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const student = await Student.create({
-      fullName,
-      email: email.toLowerCase(),
-      studentId: studentId.toUpperCase(),
-      password: hashedPassword,
-    });
+    const now = new Date().toISOString();
+    const id = crypto.randomUUID();
+    const hashedPassword = await bcrypt.hash(ROLE_PASSWORDS.student, 10);
+    db.prepare(`INSERT INTO students
+      (id, full_name, email, student_id, role, password, profile_image, created_at, updated_at)
+      VALUES (?, ?, ?, ?, 'student', ?, ?, ?, ?)`)
+      .run(id, fullName.trim(), normalizedEmail, normalizedStudentId, hashedPassword,
+        'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=300&q=80', now, now);
+    const student = db.prepare('SELECT * FROM students WHERE id = ?').get(id);
 
     res.status(201).json({
       message: 'Student registered successfully.',
       student: {
-        id: student._id,
-        fullName: student.fullName,
+        id: student.id,
+        fullName: student.full_name,
         email: student.email,
-        studentId: student.studentId,
+        studentId: student.student_id,
       },
     });
   } catch (error) {
@@ -62,37 +92,37 @@ export const registerStudent = async (req, res) => {
 
 export const loginStudent = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const email = req.body.email?.trim().toLowerCase();
+    const { password, role = 'student' } = req.body;
 
-    if (!email || !password) {
+    if (!email || !password || !ROLE_PASSWORDS[role] || !isValidEmail(email)) {
       return res.status(400).json({ message: 'Email and password are required.' });
     }
 
-    const student = await Student.findOne({ email: email.toLowerCase() });
-    if (!student) {
-      return res.status(404).json({ message: 'User not found.' });
-    }
-
-    const isMatch = await bcrypt.compare(password, student.password);
+    const isMatch = password === ROLE_PASSWORDS[role];
     if (!isMatch) {
-      return res.status(400).json({ message: 'Invalid password.' });
+      return res.status(400).json({
+        message: role === 'teacher' ? 'Invalid teacher password.' : 'Invalid student password.',
+      });
     }
 
-    const token = generateToken(student._id);
+    const token = generateToken(email, role);
+    const sessionUser = {
+      id: null,
+      fullName: getDisplayName(email, role),
+      email,
+      studentId: null,
+      role,
+      course: role === 'student' ? 'B.Tech' : 'Faculty',
+      branch: role === 'student' ? 'Computer Science' : 'Academic Department',
+      semester: null,
+      year: null,
+      profileImage: '',
+    };
 
     res.status(200).json({
       token,
-      student: {
-        id: student._id,
-        fullName: student.fullName,
-        email: student.email,
-        studentId: student.studentId,
-        course: student.course,
-        branch: student.branch,
-        semester: student.semester,
-        year: student.year,
-        profileImage: student.profileImage,
-      },
+      student: sessionUser,
     });
   } catch (error) {
     res.status(500).json({ message: 'Server error during login.' });
@@ -101,12 +131,7 @@ export const loginStudent = async (req, res) => {
 
 export const getMe = async (req, res) => {
   try {
-    const student = await Student.findById(req.student._id).select('-password');
-    if (!student) {
-      return res.status(404).json({ message: 'Student not found.' });
-    }
-
-    res.status(200).json(student);
+    res.status(200).json(req.student);
   } catch (error) {
     res.status(500).json({ message: 'Unable to fetch profile.' });
   }

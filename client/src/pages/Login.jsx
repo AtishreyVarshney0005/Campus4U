@@ -21,18 +21,13 @@ const Login = ({ role }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (role === 'teacher') {
-      setError('Teacher login is not available yet. Please use student login.');
-      return;
-    }
-
     setLoading(true);
     setError('');
 
     try {
-      const response = await API.post('/auth/login', formData);
+      const response = await API.post('/auth/login', { ...formData, role });
       login(response.data.student, response.data.token);
-      navigate('/dashboard');
+      navigate(role === 'teacher' ? '/teacher-dashboard' : '/dashboard');
     } catch (err) {
       setError(err.response?.data?.message || 'Unable to login. Please try again.');
     } finally {

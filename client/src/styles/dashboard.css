@@ -246,6 +246,15 @@
   padding: 1.2rem;
 }
 
+.teacher-actions {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.teacher-actions button {
+  width: 100%;
+}
+
 .panel-head {
   display: flex;
   justify-content: space-between;

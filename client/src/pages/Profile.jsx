@@ -2,14 +2,17 @@ import { useEffect, useState } from 'react';
 import Navbar from '../components/Navbar';
 import Sidebar from '../components/Sidebar';
 import API from '../services/api';
+import { useAuth } from '../context/AuthContext';
 
 const Profile = () => {
+  const { student } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [profile, setProfile] = useState({});
-  const [formData, setFormData] = useState({});
+  const [profile, setProfile] = useState(student || {});
+  const [formData, setFormData] = useState(student || {});
 
   useEffect(() => {
     const fetchProfile = async () => {
+      if (!student?.id) return;
       try {
         const response = await API.get('/student/profile');
         setProfile(response.data);
@@ -20,7 +23,7 @@ const Profile = () => {
     };
 
     fetchProfile();
-  }, []);
+  }, [student]);
 
   const handleChange = (e) => {
     setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
