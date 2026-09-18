@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { BellRing, FileText, BookOpen, BriefcaseBusiness, Newspaper, CalendarDays, ArrowUpRight, CheckCircle2 } from 'lucide-react';
+import { BellRing, FileText, BookOpen, BriefcaseBusiness, Newspaper, CalendarDays, Sparkles, Target, TrendingUp, Clock3, Award } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import Sidebar from '../components/Sidebar';
 import StatCard from '../components/StatCard';
@@ -53,6 +53,12 @@ const Dashboard = () => {
   const lowestMark = marks.length ? Math.min(...marks.map((m) => m.totalMarks)) : 0;
 
   const attendanceStatus = summary.percentage >= 75 ? 'Good' : summary.percentage >= 60 ? 'Warning' : 'Critical';
+  const bestSubject = marks.length ? [...marks].sort((a, b) => b.totalMarks - a.totalMarks)[0] : null;
+  const nextEvent = events[0] || null;
+  const aiRecommendation = summary.percentage >= 75
+    ? 'You are on track. Maintain consistency this week and keep revising your strongest subjects.'
+    : 'Focus on the next two classes and complete pending assignments to push attendance and performance upward.';
+  const attendanceGap = Math.max(0, 75 - summary.percentage);
 
   return (
     <div className="dashboard-shell">
@@ -80,6 +86,41 @@ const Dashboard = () => {
                 <StatCard title="Books Issued" value={`${library.filter((item) => item.status === 'Issued').length}`} subtitle={`${library.length} total records`} tone="warning" />
                 <StatCard title="Interviews" value={`${placements.length || 0}`} subtitle="Upcoming drives" tone="info" />
               </div>
+
+              <section className="student-ai-panel">
+                <div className="ai-panel-header">
+                  <div>
+                    <p className="eyebrow">AI Student Assistant</p>
+                    <h3>{student?.fullName?.split(' ')[0] || 'Student'}, your academic pulse looks strong.</h3>
+                  </div>
+                  <div className="ai-badge"><Sparkles size={15} /> Smart summary</div>
+                </div>
+
+                <div className="ai-summary-grid">
+                  <div className="ai-summary-card ai-summary-primary">
+                    <span className="ai-card-label"><Target size={14} /> Recommended action</span>
+                    <strong>{aiRecommendation}</strong>
+                  </div>
+
+                  <div className="ai-summary-card">
+                    <span className="ai-card-label"><TrendingUp size={14} /> Attendance goal</span>
+                    <strong>{attendanceGap.toFixed(0)}%</strong>
+                    <small>remaining to reach 75%</small>
+                  </div>
+
+                  <div className="ai-summary-card">
+                    <span className="ai-card-label"><Award size={14} /> Best subject</span>
+                    <strong>{bestSubject ? bestSubject.subject : 'N/A'}</strong>
+                    <small>{bestSubject ? `${bestSubject.totalMarks} / 100` : 'No marks available'}</small>
+                  </div>
+
+                  <div className="ai-summary-card">
+                    <span className="ai-card-label"><Clock3 size={14} /> Upcoming event</span>
+                    <strong>{nextEvent ? nextEvent.title : 'No upcoming events'}</strong>
+                    <small>{nextEvent ? new Date(nextEvent.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Stay tuned'}</small>
+                  </div>
+                </div>
+              </section>
 
               <div className="widgets-grid">
                 <section className="panel-card span-2">

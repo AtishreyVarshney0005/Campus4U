@@ -191,6 +191,79 @@
   gap: 1rem;
 }
 
+.student-ai-panel {
+  margin: 1.25rem 0;
+  background: linear-gradient(135deg, rgba(23, 105, 170, 0.06), rgba(139, 92, 246, 0.08));
+  border: 1px solid rgba(23, 105, 170, 0.12);
+  border-radius: 22px;
+  padding: 1.2rem;
+  box-shadow: var(--shadow);
+}
+
+.ai-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.ai-panel-header h3 {
+  margin: 0;
+  font-size: clamp(1.1rem, 1.8vw, 1.5rem);
+}
+
+.ai-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.8rem;
+  border-radius: 999px;
+  background: rgba(23, 105, 170, 0.1);
+  color: var(--primary);
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.ai-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.ai-summary-card {
+  background: rgba(255, 255, 255, 0.76);
+  border: 1px solid rgba(17, 24, 39, 0.06);
+  border-radius: 18px;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.ai-summary-primary {
+  background: linear-gradient(135deg, rgba(23, 105, 170, 0.12), rgba(37, 99, 235, 0.06));
+}
+
+.ai-card-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  color: var(--primary);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.ai-summary-card strong {
+  font-size: 1rem;
+  line-height: 1.5;
+  color: var(--text);
+}
+
+.ai-summary-card small {
+  color: var(--muted);
+}
+
 .summary-grid.small-gap {
   grid-template-columns: repeat(5, minmax(0, 1fr));
   margin-bottom: 1rem;
@@ -253,6 +326,104 @@
 
 .teacher-actions button {
   width: 100%;
+}
+
+.teacher-actions .active-panel {
+  box-shadow: inset 0 0 0 2px rgba(23, 105, 170, 0.25);
+}
+
+.teacher-form-panel {
+  margin-top: 1rem;
+}
+
+.teacher-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.teacher-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.teacher-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+.teacher-field input,
+.teacher-field select {
+  width: 100%;
+  border: 1px solid rgba(23, 105, 170, 0.15);
+  border-radius: 12px;
+  padding: 0.8rem 0.9rem;
+  background: white;
+  font: inherit;
+  color: var(--text);
+}
+
+.teacher-form-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.teacher-roster-panel {
+  margin-top: 1rem;
+}
+
+.teacher-students-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.teacher-student-row {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1.6fr) repeat(3, minmax(90px, 1fr));
+  align-items: center;
+  gap: 1rem;
+  padding: 0.8rem 0.9rem;
+  border-radius: 16px;
+  border: 1px solid rgba(23, 105, 170, 0.08);
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.teacher-student-row img {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.teacher-student-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.teacher-student-meta strong {
+  font-size: 0.96rem;
+}
+
+.teacher-student-meta span,
+.teacher-student-metric label {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.teacher-student-metric {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.teacher-student-metric strong {
+  font-size: 0.95rem;
 }
 
 .panel-head {

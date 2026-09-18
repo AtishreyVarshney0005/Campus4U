@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import { db } from '../config/db.js';
 
 const mapAttendance = (row) => ({
@@ -82,6 +83,258 @@ const mapEvent = (row) => ({
   createdAt: row.created_at,
   updatedAt: row.updated_at,
 });
+
+const buildStudentPerformance = (studentId) => {
+  const attendanceRecords = db.prepare(
+    'SELECT total_classes, present FROM attendance WHERE student_id = ?'
+  ).all(studentId);
+
+  const totalClasses = attendanceRecords.reduce((sum, item) => sum + item.total_classes, 0);
+  const presentClasses = attendanceRecords.reduce((sum, item) => sum + item.present, 0);
+  const attendanceRate = totalClasses ? Math.round((presentClasses / totalClasses) * 100) : 0;
+
+  const marksRecords = db.prepare('SELECT total_marks FROM marks WHERE student_id = ?').all(studentId);
+  const averageMarks = marksRecords.length
+    ? marksRecords.reduce((sum, item) => sum + item.total_marks, 0) / marksRecords.length
+    : 0;
+
+  return {
+    attendanceRate,
+    averageMarks: Number(averageMarks.toFixed(1)),
+    totalClasses,
+  };
+};
+
+const getGradeFromMarks = (totalMarks) => {
+  if (totalMarks >= 90) return 'A+';
+  if (totalMarks >= 80) return 'A';
+  if (totalMarks >= 70) return 'B+';
+  if (totalMarks >= 60) return 'B';
+  if (totalMarks >= 50) return 'C';
+  return 'D';
+};
+
+export const getTeacherDashboard = async (req, res) => {
+  try {
+    const students = db.prepare(
+      'SELECT * FROM students WHERE role = ? ORDER BY full_name ASC'
+    ).all('student');
+
+    const roster = students.map((studentRow) => {
+      const { attendanceRate, averageMarks, totalClasses } = buildStudentPerformance(studentRow.id);
+
+      return {
+        id: studentRow.id,
+        fullName: studentRow.full_name,
+        email: studentRow.email,
+        studentId: studentRow.student_id,
+        role: studentRow.role,
+        course: studentRow.course,
+        branch: studentRow.branch,
+        semester: studentRow.semester,
+        year: studentRow.year,
+        profileImage: studentRow.profile_image,
+        attendanceRate,
+        averageMarks,
+        totalClasses,
+      };
+    });
+
+    const activeCourses = new Set(roster.map((item) => item.course).filter(Boolean)).size || 4;
+    const pendingReviews = Math.max(8, Math.min(25, Math.round(roster.length * 1.8)));
+
+    res.status(200).json({
+      stats: {
+        totalStudents: roster.length,
+        activeCourses,
+        pendingReviews,
+        todayClasses: 3,
+      },
+      schedule: [
+        { time: '11:00 AM', title: 'Data Structures', description: 'Second year, Section A · Room 204' },
+        { time: '1:30 PM', title: 'Database Systems', description: 'Third year, Section B · Lab 2' },
+        { time: '3:00 PM', title: 'Project Guidance', description: 'Final year project review · Faculty Room' },
+      ],
+      students: roster,
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to fetch teacher dashboard data.' });
+  }
+};
+
+export const getTeacherStudents = async (req, res) => {
+  try {
+    const students = db.prepare(
+      'SELECT * FROM students WHERE role = ? ORDER BY full_name ASC'
+    ).all('student');
+
+    const roster = students.map((studentRow) => {
+      const { attendanceRate, averageMarks, totalClasses } = buildStudentPerformance(studentRow.id);
+
+      return {
+        id: studentRow.id,
+        fullName: studentRow.full_name,
+        email: studentRow.email,
+        studentId: studentRow.student_id,
+        role: studentRow.role,
+        course: studentRow.course,
+        branch: studentRow.branch,
+        semester: studentRow.semester,
+        year: studentRow.year,
+        profileImage: studentRow.profile_image,
+        attendanceRate,
+        averageMarks,
+        totalClasses,
+      };
+    });
+
+    res.status(200).json(roster);
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to fetch students roster.' });
+  }
+};
+
+export const updateTeacherAttendance = async (req, res) => {
+  try {
+    if (req.student.role !== 'teacher') {
+      return res.status(403).json({ message: 'Only teachers can update attendance.' });
+    }
+
+    const { studentId, subject, totalClasses, present, absent, leave = 0 } = req.body;
+
+    if (!studentId || !subject || totalClasses === undefined || present === undefined) {
+      return res.status(400).json({ message: 'studentId, subject, totalClasses and present are required.' });
+    }
+
+    const student = db.prepare('SELECT id FROM students WHERE id = ? AND role = ?').get(studentId, 'student');
+    if (!student) {
+      return res.status(404).json({ message: 'Student not found.' });
+    }
+
+    const normalizedTotalClasses = Number(totalClasses);
+    const normalizedPresent = Number(present);
+    const normalizedAbsent = Number(absent ?? Math.max(0, normalizedTotalClasses - normalizedPresent - Number(leave)));
+    const normalizedLeave = Number(leave ?? 0);
+    const percentage = normalizedTotalClasses
+      ? Number(((normalizedPresent / normalizedTotalClasses) * 100).toFixed(2))
+      : 0;
+
+    const trimmedSubject = String(subject).trim();
+    const now = new Date().toISOString();
+    const existing = db.prepare('SELECT * FROM attendance WHERE student_id = ? AND subject = ?').get(studentId, trimmedSubject);
+
+    if (existing) {
+      db.prepare(`UPDATE attendance
+        SET total_classes = ?, present = ?, absent = ?, leave_count = ?, percentage = ?, updated_at = ?
+        WHERE id = ?`)
+        .run(
+          normalizedTotalClasses,
+          normalizedPresent,
+          normalizedAbsent,
+          normalizedLeave,
+          percentage,
+          now,
+          existing.id,
+        );
+    } else {
+      db.prepare(`INSERT INTO attendance
+        (id, student_id, subject, total_classes, present, absent, leave_count, percentage, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+        .run(
+          crypto.randomUUID(),
+          studentId,
+          trimmedSubject,
+          normalizedTotalClasses,
+          normalizedPresent,
+          normalizedAbsent,
+          normalizedLeave,
+          percentage,
+          now,
+          now,
+        );
+    }
+
+    const record = db.prepare('SELECT * FROM attendance WHERE student_id = ? AND subject = ?').get(studentId, trimmedSubject);
+
+    res.status(existing ? 200 : 201).json(mapAttendance(record));
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to update attendance.' });
+  }
+};
+
+export const updateTeacherMarks = async (req, res) => {
+  try {
+    if (req.student.role !== 'teacher') {
+      return res.status(403).json({ message: 'Only teachers can update marks.' });
+    }
+
+    const {
+      studentId,
+      subject,
+      internalMarks = 0,
+      assignmentMarks = 0,
+      practicalMarks = 0,
+      theoryMarks = 0,
+      semester = 6,
+    } = req.body;
+
+    if (!studentId || !subject) {
+      return res.status(400).json({ message: 'studentId and subject are required.' });
+    }
+
+    const student = db.prepare('SELECT id FROM students WHERE id = ? AND role = ?').get(studentId, 'student');
+    if (!student) {
+      return res.status(404).json({ message: 'Student not found.' });
+    }
+
+    const trimmedSubject = String(subject).trim();
+    const totalMarks = Number(internalMarks) + Number(assignmentMarks) + Number(practicalMarks) + Number(theoryMarks);
+    const grade = getGradeFromMarks(totalMarks);
+    const now = new Date().toISOString();
+    const existing = db.prepare('SELECT * FROM marks WHERE student_id = ? AND subject = ?').get(studentId, trimmedSubject);
+
+    if (existing) {
+      db.prepare(`UPDATE marks
+        SET internal_marks = ?, assignment_marks = ?, practical_marks = ?, theory_marks = ?, total_marks = ?, grade = ?, semester = ?, updated_at = ?
+        WHERE id = ?`)
+        .run(
+          Number(internalMarks),
+          Number(assignmentMarks),
+          Number(practicalMarks),
+          Number(theoryMarks),
+          totalMarks,
+          grade,
+          Number(semester),
+          now,
+          existing.id,
+        );
+    } else {
+      db.prepare(`INSERT INTO marks
+        (id, student_id, subject, internal_marks, assignment_marks, practical_marks, theory_marks, total_marks, grade, semester, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+        .run(
+          crypto.randomUUID(),
+          studentId,
+          trimmedSubject,
+          Number(internalMarks),
+          Number(assignmentMarks),
+          Number(practicalMarks),
+          Number(theoryMarks),
+          totalMarks,
+          grade,
+          Number(semester),
+          now,
+          now,
+        );
+    }
+
+    const record = db.prepare('SELECT * FROM marks WHERE student_id = ? AND subject = ?').get(studentId, trimmedSubject);
+
+    res.status(existing ? 200 : 201).json(mapMarks(record));
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to update marks.' });
+  }
+};
 
 export const getStudentAttendance = async (req, res) => {
   try {

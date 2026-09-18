@@ -1,5 +1,9 @@
 import express from 'express';
 import {
+  getTeacherDashboard,
+  getTeacherStudents,
+  updateTeacherAttendance,
+  updateTeacherMarks,
   getStudentAttendance,
   getAttendanceSummary,
   getStudentMarks,
@@ -14,6 +18,10 @@ import protect from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
+router.get('/teacher/dashboard', protect, getTeacherDashboard);
+router.get('/teacher/students', protect, getTeacherStudents);
+router.post('/teacher/attendance', protect, updateTeacherAttendance);
+router.post('/teacher/marks', protect, updateTeacherMarks);
 router.get('/attendance', protect, getStudentAttendance);
 router.get('/attendance/summary', protect, getAttendanceSummary);
 router.get('/marks', protect, getStudentMarks);

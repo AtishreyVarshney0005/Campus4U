@@ -6,6 +6,7 @@ import { useAuth } from '../context/AuthContext';
 
 const Profile = () => {
   const { student } = useAuth();
+  const isTeacher = student?.role === 'teacher';
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [profile, setProfile] = useState(student || {});
   const [formData, setFormData] = useState(student || {});
@@ -49,22 +50,22 @@ const Profile = () => {
           <div className="page-header page-header-inline">
             <div>
               <p className="eyebrow">Profile</p>
-              <h2>Student Information</h2>
+              <h2>{isTeacher ? 'Teacher Information' : 'Student Information'}</h2>
             </div>
           </div>
 
           <section className="panel-card profile-layout">
             <div className="profile-identity">
-              <img src={profile.profileImage || 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=300&q=80'} alt="Student" />
+              <img src={profile.profileImage || 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=300&q=80'} alt={isTeacher ? 'Teacher' : 'Student'} />
               <h3>{profile.fullName}</h3>
-              <p>{profile.studentId}</p>
+              <p>{isTeacher ? 'Teacher ID' : 'Student ID'} · {profile.studentId}</p>
             </div>
 
             <form className="profile-form" onSubmit={handleSubmit}>
               <div className="form-grid">
                 <label><span>Full Name</span><input name="fullName" value={formData.fullName || ''} onChange={handleChange} /></label>
                 <label><span>Email</span><input name="email" value={formData.email || ''} onChange={handleChange} disabled /></label>
-                <label><span>Student ID</span><input name="studentId" value={formData.studentId || ''} onChange={handleChange} disabled /></label>
+                <label><span>{isTeacher ? 'Teacher ID' : 'Student ID'}</span><input name="studentId" value={formData.studentId || ''} onChange={handleChange} disabled /></label>
                 <label><span>Phone</span><input name="phone" value={formData.phone || ''} onChange={handleChange} /></label>
                 <label><span>Course</span><input name="course" value={formData.course || ''} onChange={handleChange} /></label>
                 <label><span>Branch</span><input name="branch" value={formData.branch || ''} onChange={handleChange} /></label>
